@@ -1,6 +1,6 @@
 {
   "name": "dsh-vision",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "type": "module",
   "description": "Give any DSH session the ability to read images by routing them through a vision-capable model the host already has, with a settings panel for status, routing, switches and call statistics.",
   "license": "MIT",

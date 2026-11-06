@@ -138,6 +138,8 @@ All six templates are editable in the panel and resettable to defaults. `promptP
 
 **Run self-test** is a genuine end-to-end check: the host synthesises a solid-colour PNG in memory (built-in zlib encoder, no third-party library), asks the model what colour it is, and compares the answer. It verifies that the model really sees the image, that the transport works, and that the whole chain is wired.
 
+The panel follows the shell's light/dark mode. It reads the theme from the page background, repaints its palette in place, and re-runs whenever the shell flips `class`/`style`/`data-theme` on `<html>` or the OS preference changes. Two places need more than CSS variables and are handled explicitly: the shell's own switches (whose off-track is a translucent hairline that reads as one white pill) get a scoped ``[role="switch"]:not([data-dsh-vision])`` override, and native form surfaces get ``color-scheme`` plus explicit ``<option>`` colours — without those, a dropdown opened white text on a white popup, because the panel's text colour is near-white in the dark theme while the popup list is painted by the browser.
+
 ![The Vision panel](assets/shot-panel.webp)
 
 ### In the app
@@ -386,6 +388,8 @@ DSH 本来就知道怎么把图发给声明了图片输入的模型，但实际�
 | 最近调用 | 时间 / 路线 / 耗时 / 图片大小 / 张数 / 原始错误文本 |
 
 **运行自检**是真的端到端：宿主现场生成一张纯色 PNG（内置 zlib 手写编码器，无第三方库），让模型回答颜色，再比对答案。它同时验证了模型真的能看图、传输方式可用、整条链路通。
+
+面板跟随宿主外壳的深/浅色主题：从页面底色判断当前主题，就地重刷配色，并在外壳翻转 `<html>` 的 `class`/`style`/`data-theme` 或系统偏好变化时重跑。有两处光靠 CSS 变量不够、必须单独处理：一是外壳自己的开关（关闭态轨道是半透明细线，在卡片底色上糊成一片白药丸），用带作用域的 ``[role="switch"]:not([data-dsh-vision])`` 覆盖；二是原生表单控件，要给它 ``color-scheme`` 并显式指定 ``<option>`` 配色——否则下拉展开是白字白底，因为面板文字在深色主题下接近纯白，而弹出列表由浏览器自己绘制。
 
 ![视觉面板](assets/shot-panel.webp)
 
