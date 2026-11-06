@@ -15,6 +15,30 @@ DSH already knows how to send images to models that declare image input. Two thi
 
 This plugin goes around both. It calls a vision-capable route directly through `ctx.llm.stream()` — the same in-process path any other caller uses — and hands the answer back as text. The host already holds the credentials; the plugin never sees them.
 
+### Who this is for
+
+- **You are driving a text-only model.** A strong reasoning model with no image input can still get image facts — it just asks one that can. This is the case the plugin was written for.
+- **Your session model refuses to attach files.** Some providers reject an image outright at upload time, before any model sees it. The plugin never touches that path.
+- **You want the reading done by a specific model** — cheap OCR for text, a larger model for artwork — while the conversation continues on whatever model you are already paying for.
+- **You are scripting.** The tool is callable from a subagent or a workflow without changing any session's model or authorising delegation.
+
+It is *not* for: reading images while your own model already accepts them (just attach the file), or anything that needs a pixel-accurate diff (no conversational model is reliable there — crop and ask about regions instead).
+
+### What it actually does well, measured
+
+Same three images, three routes, one image per call:
+
+| route | latency | tokens out | strength | what it gets wrong |
+| --- | --- | --- | --- | --- |
+| a large vision-language model | 10–30 s | 500–2100 | artwork and detail: accessories, materials, shoe buckles, bubble shapes | counts and orientations drift, especially with several images in one request |
+| a small general VL model | 2–8 s | 300–450 | colour, material, layout, cost | invents plausible-but-wrong specifics ("anchor-shaped embroidery", "nine-grid") |
+| a dedicated OCR model | 1–2 s | 80–160 | verbatim text, fastest and cheapest | spatial description is unreliable; misses entire panels |
+
+Two findings worth designing around:
+
+1. **Text transcription is the consensus case.** All three routes produced byte-identical dialogue lines on the same comic page. If the answer is text, any route works and the OCR route is 10–15× cheaper.
+2. **Multi-image requests degrade counting and orientation.** The same model that called a side view "facing right" on a three-image request called it "facing left" when the image was sent alone — and the crop proves it faces left. **Send one image per call when the question involves counts, panels or directions**, even though `paths[]` accepts several.
+
 ### What it adds
 
 One tool, `vision_read` (renamable in the panel):
@@ -150,6 +174,12 @@ The panel's "Maintenance" area turns that into a button:
 
 Config and call records live on disk, so a restart loses nothing. To inspect the script before running it, set `DSH_VISION_NO_RESTART=1` and call the endpoint once: it writes the script and returns `dryRun: true` without starting anything.
 
+### Credits
+
+The three images this plugin was validated against are character sheets and a two-panel comic from **deepseek-whale-girl-gallery** — <https://iphsiibl.github.io/deepseek-whale-girl-gallery/>. They were chosen because they stress exactly what vision models are bad at: panel counts, side-view orientation, small identity details (a horn, a flower pin), and verbatim dialogue. The measurements in "What it actually does well" come from those images.
+
+No gallery asset is redistributed in this repository; the link is attribution for the test material.
+
 ### Test
 
 ```bash
@@ -170,6 +200,30 @@ DSH 本来就知道怎么把图发给声明了图片输入的模型，但实际�
 2. 用子智能体指定视觉路线，可能被会话级的模型选择 allowlist 拦下。
 
 这个插件绕开这两层：它通过 `ctx.llm.stream()` 直接调用一条能看图的路线——和任何其它进程内调用方走的是同一条路——再把结论当文本交回来。凭据始终在宿主手里，插件不接触。
+
+### 谁适合用
+
+- **你在用纯文本模型。** 一个很强的推理模型没有图片输入，仍然可以拿到图片事实——只要去问一个能看的。这就是这个插件诞生的场景。
+- **你的会话模型连附件都不收。** 有些 provider 在上传阶段就直接拒绝，任何模型都没机会看。插件不经过那条路。
+- **你想指定由谁来读**——要文字就交给便宜的 OCR 模型，要美术细节就交给大模型——而对话继续用你已经在付费的那个模型。
+- **你在写脚本。** 这个工具能被 subagent 或 workflow 调用，不用改任何会话的模型，也不用给委派放行。
+
+它**不适合**：你自己模型本来就能收图时（直接附件即可）；以及需要像素级比对的场合（对话模型在这个维度都不可靠，应当裁切后分区询问）。
+
+### 实测出来的能力边界
+
+同三张图、三条路线、每张图单独一次调用：
+
+| 路线 | 耗时 | 输出 token | 强项 | 出错方式 |
+| --- | --- | --- | --- | --- |
+| 大号视觉语言模型 | 10–30 s | 500–2100 | 美术与细节：配饰、材质、鞋扣、气泡形状 | 计数与朝向会漂移，多图一次送时尤其明显 |
+| 小号通用 VL 模型 | 2–8 s | 300–450 | 颜色、材质、版面、性价比 | 会编出「看起来很像」的错细节（「锚形刺绣」「九宫格」） |
+| 专用 OCR 模型 | 1–2 s | 80–160 | 逐字转写，最快最省钱 | 空间描述不可信，会整块漏掉画面分区 |
+
+两条值得在设计上采纳的结论：
+
+1. **文字转写是三方共识区。** 同一页漫画的六句台词，三条路线逐字一致。要文字时任何一条都行，而 OCR 路线便宜 10–15 倍。
+2. **一次送多张图会拉低计数与朝向的准确率。** 同一个模型，三图一起送时把侧视图说成「朝右」，单独送时改口「朝左」——裁剪图证明它朝左。**涉及数量、分格、朝向的问题，一张图一次调用**，即使 `paths[]` 收得下多张。
 
 ### 它加了什么
 
@@ -299,6 +353,12 @@ ctx.llm.registerAdapter(['dsh-vision'], adapter)
 - **只刷新页面 (F5)** → `location.reload()`，用于面板自身（`client.js`）改动。
 
 配置项、调用记录都落在磁盘上，重启不影响。想先看脚本内容再执行，可以先设 `DSH_VISION_NO_RESTART=1` 调一次接口：它会写好脚本、返回 `dryRun: true`，不启动。
+
+### 素材来源
+
+验证这个插件用的三张图（两张角色设定表 + 两格条漫）来自 **deepseek-whale-girl-gallery**——<https://iphsiibl.github.io/deepseek-whale-girl-gallery/>。选它们是因为它们正好打在视觉模型的弱项上：分格计数、侧视朝向、身份小特征（一根角、一枚花饰）、逐字台词。「实测出来的能力边界」那张表的数据就出自这三张图。
+
+仓库不重新分发任何 gallery 素材，此处链接仅为测试材料的出处标注。
 
 ### 自测
 
