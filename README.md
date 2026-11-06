@@ -39,6 +39,55 @@ Two findings worth designing around:
 1. **Text transcription is the consensus case.** All three routes produced byte-identical dialogue lines on the same comic page. If the answer is text, any route works and the OCR route is 10–15× cheaper.
 2. **Multi-image requests degrade counting and orientation.** The same model that called a side view "facing right" on a three-image request called it "facing left" when the image was sent alone — and the crop proves it faces left. **Send one image per call when the question involves counts, panels or directions**, even though `paths[]` accepts several.
 
+### Sample runs (verbatim output, not illustrations)
+
+Three images from [deepseek-whale-girl-gallery](https://iphsiibl.github.io/deepseek-whale-girl-gallery/), each sent alone. Every quote below is unedited model output.
+
+**① Character sheet — counts and orientation on a general VL route**
+
+![Q-version character sheet](assets/sample-chibi-sheet.webp)
+
+> 上半部分…并排三个全身立绘：左为正面、中为侧面（朝左）、右为背面，三者大小基本一致。
+> …下半部分…为局部特写格：左侧一格大特写（脸部半身，约占下半区一半宽）；右侧上方一排三格（呆毛与发箍、侧发蝴蝶结与鳍状发饰、眼睛特写）；右下角一排四格（胸前蝴蝶结与纽扣、鲸鱼围裙特写、裙摆与金色星形纹样、脚部白袜与深蓝鞋子）。
+
+The block count is right (1 + 3 + 4 = 8) and so is the orientation ("朝左"). The trim is not: "金色星形纹样" is a four-petal crown motif, not a star. **Count and orientation correct, ornament shape invented** — a typical split.
+
+**② Adult-proportion sheet of the same character — a different route, right column**
+
+![Adult-proportion character sheet](assets/sample-mature-sheet.webp)
+
+> 画面左侧至中部并列三幅等高全身像…最右侧是局部图区，上方为一幅较大的头肩及上半身特写，其下以2×2排布四幅较小特写，依次为围裙鲸鱼图案、尾鳍与腰后蝴蝶结、裙摆和鞋履。
+
+Also correct, including the right-hand column that the merged multi-image call had described as "below are two panels" and then listed three items for. Same sheet, different route, correct layout.
+
+**③ Two-panel comic — text is where routes agree, space is where they diverge**
+
+![Two-panel comic](assets/sample-comic.webp)
+
+`task: "text"` on a dedicated OCR route — 1.7 s, 24 output tokens:
+
+```
+你不诚实！
+你不安全！
+这两个人…
+蒸得好舒服
+还想再蒸一会
+这两个人…
+```
+
+Six lines, byte-identical on all three routes. Now the *same* OCR route with `task: "describe"`:
+
+> 2. 左上角为第一个场景，主体为两个角色；右上角为第二个场景，主体为一个角色。
+> 3. 左上角文字为"你不诚实！"；右上角文字为"你不安全！"；右下角文字为"这两个人…"
+
+Wrong on every spatial claim — the page has two horizontal panels (top / bottom), not left / right. **The transcription is trustworthy; the coordinates are not.** That is exactly why `text` and `describe` are separate tasks rather than one prompt.
+
+The same comic on a large VLM route, which is what you want when details matter:
+
+> 白发女孩有淡紫白色长发、一对白色龙角（带螺旋纹），粉紫色眼睛，头侧有灰色绳结状发饰…橙发女孩…头右侧有一朵菊花状发饰和黑色丝带…左下角有一个装黑色石头（桑拿石）的木桶
+
+The horn, the flower pin and the sauna-stone bucket are all real, and all three were missed by the cheaper routes.
+
 ### What it adds
 
 One tool, `vision_read` (renamable in the panel):
@@ -176,9 +225,7 @@ Config and call records live on disk, so a restart loses nothing. To inspect the
 
 ### Credits
 
-The three images this plugin was validated against are character sheets and a two-panel comic from **deepseek-whale-girl-gallery** — <https://iphsiibl.github.io/deepseek-whale-girl-gallery/>. They were chosen because they stress exactly what vision models are bad at: panel counts, side-view orientation, small identity details (a horn, a flower pin), and verbatim dialogue. The measurements in "What it actually does well" come from those images.
-
-No gallery asset is redistributed in this repository; the link is attribution for the test material.
+The sample images in [`assets/`](assets/) are character sheets and a two-panel comic from **deepseek-whale-girl-gallery** — <https://iphsiibl.github.io/deepseek-whale-girl-gallery/>. They are included here as the fixed test corpus for the measurements above, because they stress exactly what vision models are bad at: panel counts, side-view orientation, small identity details (a horn, a flower pin), and verbatim dialogue. All rights remain with the gallery; see [assets/README.md](assets/README.md) for per-file provenance.
 
 ### Test
 
@@ -224,6 +271,55 @@ DSH 本来就知道怎么把图发给声明了图片输入的模型，但实际�
 
 1. **文字转写是三方共识区。** 同一页漫画的六句台词，三条路线逐字一致。要文字时任何一条都行，而 OCR 路线便宜 10–15 倍。
 2. **一次送多张图会拉低计数与朝向的准确率。** 同一个模型，三图一起送时把侧视图说成「朝右」，单独送时改口「朝左」——裁剪图证明它朝左。**涉及数量、分格、朝向的问题，一张图一次调用**，即使 `paths[]` 收得下多张。
+
+### 真实调用样例（原文照抄，非示意图）
+
+三张图都来自 [deepseek-whale-girl-gallery](https://iphsiibl.github.io/deepseek-whale-girl-gallery/)，每张单独一次调用。下面引用的每一段都是未经改写的模型输出。
+
+**① 角色设定表 —— 通用 VL 路线上的计数与朝向**
+
+![Q 版角色设定表](assets/sample-chibi-sheet.webp)
+
+> 上半部分…并排三个全身立绘：左为正面、中为侧面（朝左）、右为背面，三者大小基本一致。
+> …下半部分…为局部特写格：左侧一格大特写（脸部半身，约占下半区一半宽）；右侧上方一排三格（呆毛与发箍、侧发蝴蝶结与鳍状发饰、眼睛特写）；右下角一排四格（胸前蝴蝶结与纽扣、鲸鱼围裙特写、裙摆与金色星形纹样、脚部白袜与深蓝鞋子）。
+
+分块数对了（1 + 3 + 4 = 8），朝向也对了（「朝左」）。纹样没有：所谓「金色星形纹样」其实是四瓣花冠饰。**计数和朝向对、装饰形状编造**——这是很典型的一半对一半错。
+
+**② 同一角色的成人比例设定表 —— 换一条路线，右列结构**
+
+![成人比例角色设定表](assets/sample-mature-sheet.webp)
+
+> 画面左侧至中部并列三幅等高全身像…最右侧是局部图区，上方为一幅较大的头肩及上半身特写，其下以2×2排布四幅较小特写，依次为围裙鲸鱼图案、尾鳍与腰后蝴蝶结、裙摆和鞋履。
+
+同样说对了，包括那条右列——而多图合并的那次调用把它说成「下方两格」却列出了三项。同一张图、换一条路线，版面就对了。
+
+**③ 两格条漫 —— 文字是共识区，空间是分歧区**
+
+![两格条漫](assets/sample-comic.webp)
+
+专用 OCR 路线跑 `task: "text"`——1.7 秒，24 个输出 token：
+
+```
+你不诚实！
+你不安全！
+这两个人…
+蒸得好舒服
+还想再蒸一会
+这两个人…
+```
+
+六句，三条路线逐字一致。现在换成**同一条 OCR 路线**跑 `task: "describe"`：
+
+> 2. 左上角为第一个场景，主体为两个角色；右上角为第二个场景，主体为一个角色。
+> 3. 左上角文字为"你不诚实！"；右上角文字为"你不安全！"；右下角文字为"这两个人…"
+
+每一个空间判断都是错的——这一页是上下两格，不是左右两格。**转写可信，坐标不可信。** 这正是 `text` 和 `describe` 要做成两个任务、而不是一个提示词的原因。
+
+同一张条漫换大号 VLM 路线，细节就回来了：
+
+> 白发女孩有淡紫白色长发、一对白色龙角（带螺旋纹），粉紫色眼睛，头侧有灰色绳结状发饰…橙发女孩…头右侧有一朵菊花状发饰和黑色丝带…左下角有一个装黑色石头（桑拿石）的木桶
+
+那对龙角、那朵花饰、那个炭石木桶都是真实存在的，而三条便宜路线全部漏掉了。
 
 ### 它加了什么
 
@@ -356,9 +452,7 @@ ctx.llm.registerAdapter(['dsh-vision'], adapter)
 
 ### 素材来源
 
-验证这个插件用的三张图（两张角色设定表 + 两格条漫）来自 **deepseek-whale-girl-gallery**——<https://iphsiibl.github.io/deepseek-whale-girl-gallery/>。选它们是因为它们正好打在视觉模型的弱项上：分格计数、侧视朝向、身份小特征（一根角、一枚花饰）、逐字台词。「实测出来的能力边界」那张表的数据就出自这三张图。
-
-仓库不重新分发任何 gallery 素材，此处链接仅为测试材料的出处标注。
+[`assets/`](assets/) 里那三张样例图（两张角色设定表 + 两格条漫）来自 **deepseek-whale-girl-gallery**——<https://iphsiibl.github.io/deepseek-whale-girl-gallery/>。放在仓库里是作为上面那些实测数据的固定测试语料，因为它们正好打在视觉模型的弱项上：分格计数、侧视朝向、身份小特征（一根角、一枚花饰）、逐字台词。版权归 gallery 所有，逐文件的来源说明见 [assets/README.md](assets/README.md)。
 
 ### 自测
 
