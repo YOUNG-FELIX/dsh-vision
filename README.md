@@ -138,6 +138,28 @@ All six templates are editable in the panel and resettable to defaults. `promptP
 
 **Run self-test** is a genuine end-to-end check: the host synthesises a solid-colour PNG in memory (built-in zlib encoder, no third-party library), asks the model what colour it is, and compares the answer. It verifies that the model really sees the image, that the transport works, and that the whole chain is wired.
 
+![The Vision panel](assets/shot-panel.webp)
+
+### In the app
+
+Four screenshots from a real session, taken while this plugin was the only thing letting a text-only model look at pictures. They are useful as a tour, and as a record of what the tool call actually looks like in the transcript. Account name and avatar are redacted.
+
+**1. The call.** `ops_glob` finds the files, `vision_read` reads all three in one call. The dropdown in the background is the host's own model picker — the session is on a text-only model, which is the whole point.
+
+![Tool call in the transcript](assets/shot-client-toolcall.webp)
+
+**2. Output, sheet one.** A Q-version character sheet: three full-body views on top, seven detail crops below. Counted correctly.
+
+![Q-version sheet result](assets/shot-client-chibi.webp)
+
+**3. Output, sheet two.** The same character at adult proportions, with the 2×2 detail block called out correctly — the case a merged multi-image call got wrong.
+
+![Mature sheet result](assets/shot-client-mature.webp)
+
+**4. Output, the comic.** Two vertical panels. Note that the coordinates in the prose are wrong while the dialogue is word-for-word — see the measurement section above.
+
+![Comic result](assets/shot-client-comic.webp)
+
 ### Where data lives
 
 ```
@@ -364,6 +386,28 @@ DSH 本来就知道怎么把图发给声明了图片输入的模型，但实际�
 | 最近调用 | 时间 / 路线 / 耗时 / 图片大小 / 张数 / 原始错误文本 |
 
 **运行自检**是真的端到端：宿主现场生成一张纯色 PNG（内置 zlib 手写编码器，无第三方库），让模型回答颜色，再比对答案。它同时验证了模型真的能看图、传输方式可用、整条链路通。
+
+![视觉面板](assets/shot-panel.webp)
+
+### 在真实会话里长什么样
+
+四张真实会话截图，当时这个会话本身就是纯文本模型，全靠这个插件看图。既是导览，也留了一份工具调用在轨迹里到底长什么样的记录。账号名与头像已打码。
+
+**1. 调用现场。** `ops_glob` 找到文件，`vision_read` 一次读三张。背景里那个下拉框是宿主自己的模型选择器——当前会话用的就是纯文本模型，这正是它存在的理由。
+
+![轨迹里的工具调用](assets/shot-client-toolcall.webp)
+
+**2. 输出，第一张设定表。** Q 版角色三视图：上半三个全身，下半七格局部。数对了。
+
+![Q 版设定表结果](assets/shot-client-chibi.webp)
+
+**3. 输出，第二张设定表。** 同一角色的成年比例，2×2 的局部块被正确指出——正是多图合并那次说错的地方。
+
+![成年版设定表结果](assets/shot-client-mature.webp)
+
+**4. 输出，条漫。** 上下两格。注意：文字转写逐字正确，而画面里描述的空间方位是错的——见上面的实测一节。
+
+![条漫结果](assets/shot-client-comic.webp)
 
 ### 数据落在哪
 

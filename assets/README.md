@@ -31,3 +31,21 @@ vision_read(paths: ["<abs>/sample-chibi-sheet.webp", "<abs>/sample-mature-sheet.
 
 The third form is supported and sometimes what you want — but if the question involves a count, a
 panel split or a direction, send one image per call and compare.
+
+## Screenshots (`shot-*.webp`)
+
+Not test corpus — documentation of the panel and of a real session. These are captures of the DSH
+desktop client itself, MIT-licensed with the rest of this directory's code, and carry no third-party
+rights.
+
+The four `shot-client-*.webp` files come from a session running on a **text-only** model, which is
+the situation the plugin exists for. The account name and avatar in the bottom-left corner of each
+were blurred out and then painted over with the sidebar colour, so nothing recoverable remains.
+
+| file | what it shows |
+| --- | --- |
+| `shot-panel.webp` | the Vision panel itself — status, route, fallbacks, counters |
+| `shot-client-toolcall.webp` | `vision_read` in the transcript: three paths in, text out, host model picker visible in the background |
+| `shot-client-chibi.webp` | result for the Q-version sheet — panel count correct |
+| `shot-client-mature.webp` | result for the adult sheet — the 2×2 detail block, the case a merged multi-image call got wrong |
+| `shot-client-comic.webp` | result for the comic — verbatim dialogue correct, spatial claims wrong |
