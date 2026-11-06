@@ -1,0 +1,6 @@
+# dsh-vision bundle layer: mount the vision bridge plugin. The host half
+# registers the `vision_read` tool and the /dsh-vision loopback routes; the
+# client half contributes the settings-section panel (lib/client.js).
+- insert:
+    - id: dsh-vision
+      name: dsh-vision
