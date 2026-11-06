@@ -96,7 +96,7 @@ One tool, `vision_read` (renamable in the panel):
 {
   "path":  "/home/you/shot.png",     // single image, PNG / JPEG / GIF / WEBP
   "paths": ["a.png", "b.png"],       // or several (limit configurable)
-  "task":  "ui",                     // describe | text | ui | chart | diff | question
+  "task":  "ui",                     // auto | describe | text | ui | chart | diff | question
   "prompt": "只关心左上角的错误提示",   // optional, appended to the template
   "route": "someprovider/some-model" // optional, overrides the configured route
 }
@@ -110,12 +110,13 @@ Output is the model's text plus one metadata line:
 
 On failure every attempt's raw error is surfaced, not swallowed.
 
-### Prompts are built in
+### Prompts ship ready, and stay editable
 
 The caller picks a `task`; it does not write a prompt. This keeps granularity identical across models, sessions and users, instead of one session getting a lazy "describe this image".
 
 | task | purpose | output |
 | --- | --- | --- |
+| `auto` | you write the whole instruction | sent verbatim, no template glued on — for one-off questions the six presets cannot express |
 | `describe` | general (default) | facts: what it is / subject & position / verbatim text / colour light material / uncertainties |
 | `text` | pure OCR | text only, original line breaks and indentation |
 | `ui` | software screenshots | title & view / nav items / controls & state / verbatim messages & errors / values, paths, versions |
@@ -123,7 +124,39 @@ The caller picks a `task`; it does not write a prompt. This keeps granularity id
 | `diff` | several images | each state / itemised differences (old → new) / changed regions / added and removed elements |
 | `question` | targeted Q&A | answers strictly from what is visible, says so when it cannot tell |
 
-All six templates are editable in the panel and resettable to defaults. `promptPrefix` is prepended to every read (handy for forcing an output language or format).
+All six templates are pre-filled, editable in the panel, and resettable to defaults. Editing happens in place: type in the textarea, then press **保存提示词** right under it (or the page-level 保存). The text goes to `~/.dsh/dsh-vision/config.json` and the next read uses it — there is no rebuild, no restart, no fork of the source. `promptPrefix` is prepended to every read (handy for forcing an output language or format).
+
+### Case: free vision through WorkBuddy Connector
+
+The plugin needs a vision-capable route that the host already knows about. If you have no paid vision API, the cheapest path is a connector that registers free models with the host:
+
+1. Install `dsh-connect-workbuddy` from the market and sign in. It registers its catalog as regular host providers, so `workbuddy/hy3` and friends appear in DSH's own model list.
+2. Open Settings → Vision → **Route** and press **rediscover models**. Anything the connector registered that declares image input shows up as a selectable route — no key, no endpoint, no per-token bill.
+3. Pick it as the primary route, save, and call `vision_read`.
+
+What this does and does not change:
+
+| | |
+| --- | --- |
+| Your session model | untouched. The conversation keeps running on whatever you picked; only the image read crosses over |
+| Billing | runs on the connector's quota, not your session model's. Models marked `x0.00` cost nothing per call |
+| Your API keys | never involved. The connector holds its own credentials; the plugin still never sees them |
+| Free-tier risk | a promo model can be withdrawn or repriced upstream without notice. Keep two or three fallbacks configured — that is what the fallback list is for |
+| Quality | free routes are the small/cheap tier. Verbatim text is usually fine; counts, orientation and fine detail are where they slip — see the measurement table above |
+
+If you would rather not depend on a connector, the same panel takes a plain OpenAI-compatible endpoint under **Custom API** — but that path can only send images inlined as base64 and holds its own key, so prefer a host route whenever one exists.
+
+### Route priority: host models first, custom API second
+
+| | host route (`workbuddy/…`, `aliyun/…`, `direct/…`) | custom API (`custom/…`) |
+| --- | --- | --- |
+| Who holds the key | the host's provider adapter | this plugin, in its own config file (or `apiKeyRef` into `.credentials.yaml`) |
+| Image delivery | attachment service, or inline fallback | inline base64 only |
+| Model discovery | automatic, with a capability check | you type the model id yourself |
+| Rotation / quota | handled by the provider layer | yours to manage |
+| Good for | everything, when the model you want is already registered | one-off services the host has never heard of |
+
+Discovery only lists host routes that declare image input, so a host route is a route that has already answered "can you see?". Custom routes are an escape hatch, not the default — and they are the only path that puts a key into this plugin's own storage.
 
 ### Panel (Settings → Vision)
 
@@ -131,6 +164,8 @@ All six templates are editable in the panel and resettable to defaults. `promptP
 | --- | --- |
 | Status | running/disabled badge, current route, tool name, whether `llm` and `attachments` are mounted, config path, discovery timestamp, total calls / ok / failed / success rate / average latency / total image bytes / last success / last error |
 | Route | primary route (only routes the host reports as image-capable), transport (`auto`/`attachment`/`inline`), fallback toggle, fallback list (add and remove one by one), "rediscover models" |
+| Prompts | default task, per-task template editor with reset-to-default, extra instruction, and a **save** button right there — edits are written to the config file and used by the next read |
+| Custom API | OpenAI-compatible endpoints the host does not know about: base URL, model id, key (write-only, never echoed back) |
 | Limits | timeout, per-image size cap, images per call, extra instruction, verbosity (rich/quiet), tool name |
 | Switches | enable plugin (when off the tool refuses outright rather than silently degrading), record call details, retained detail rows |
 | Actions | save, discard, **run self-test**, reset stats, clear log, refresh |
@@ -353,7 +388,7 @@ DSH 本来就知道怎么把图发给声明了图片输入的模型，但实际�
 {
   "path":  "/home/you/shot.png",     // 单张，PNG / JPEG / GIF / WEBP
   "paths": ["a.png", "b.png"],       // 或多张（单次上限可配）
-  "task":  "ui",                     // describe | text | ui | chart | diff | question
+  "task":  "ui",                     // auto | describe | text | ui | chart | diff | question
   "prompt": "只关心左上角的错误提示",   // 可选，追加在模板后面
   "route": "someprovider/some-model" // 可选，覆盖面板里配的路线
 }
@@ -361,12 +396,13 @@ DSH 本来就知道怎么把图发给声明了图片输入的模型，但实际�
 
 返回两段：模型正文，加一行元信息（`[model provider/model · transport attachment · 6.2s · 1 image(s) · 220 KB · tokens 1412→180]`）。失败时把每次尝试的原始错误一并抛出，不吞。
 
-### 提示词由插件内置，不由调用方编写
+### 提示词预置好，但随时可改可存
 
-调用方只选 `task`，不写提示词。这样换模型、换会话、换人用，颗粒度都一致——不会出现某个会话里模型随手写一句"描述这张图"，结果回来一段泛泛而谈。
+调用方只选 `task`，不用自己写提示词。这样换模型、换会话、换人用，颗粒度都一致——不会出现某个会话里模型随手写一句"描述这张图"，结果回来一段泛泛而谈。
 
 | task | 用途 | 产出 |
 | --- | --- | --- |
+| `auto` | 你自己写完整指令 | 原样发送、不叠加模板，用于六套预置覆盖不到的一次性问题 |
 | `describe` | 通用（缺省） | 事实清单：是什么 / 主体与位置 / 文字逐字转写 / 颜色光线材质 / 不确定项单列 |
 | `text` | 纯 OCR | 只转写文字，保留换行缩进，不描述画面 |
 | `ui` | 软件界面截图 | 标题与视图 / 导航项 / 控件与状态（选中·禁用）/ 提示与报错原文 / 数值路径版本号 |
@@ -374,7 +410,39 @@ DSH 本来就知道怎么把图发给声明了图片输入的模型，但实际�
 | `diff` | 多图对比 | 各自状态 / 逐项差异（旧值 → 新值）/ 变化区域 / 增删元素 |
 | `question` | 定向提问 | 只依据可见内容回答，信息不足就说"图中看不出来" |
 
-六套模板都能在面板里改，也能恢复默认；`promptPrefix` 是每次都会拼在最前面的附加指令（适合固定输出语言或格式）。
+**预置不等于锁死。** 六套模板在面板「提示词」区块里就能直接改：改 textarea → 点它下面的「保存提示词」（或页面底部那个「保存」）→ 写进 `~/.dsh/dsh-vision/config.json` → 下一次读图立刻用新措辞。不用重新构建、不用重启、不用改源码。「恢复默认」把选中的那一套还原，「放弃修改」丢掉未保存的编辑。`promptPrefix` 是每次都会拼在最前面的附加指令（适合固定输出语言或格式）。
+
+### 案例：靠 WorkBuddy Connector 用上免费视觉
+
+这个插件自己不带模型，它借用宿主已经认识的视觉路线。如果没有付费视觉 API，最省事的组合是找一个会把免费模型注册进宿主的连接器：
+
+1. 从插件市场装 `dsh-connect-workbuddy` 并登录。它把模型目录注册成普通的宿主 provider，`workbuddy/hy3` 之类就直接出现在 DSH 自己的模型列表里。
+2. 打开 设置 → 视觉 → 「路线」，点「重新发现模型」。凡是这个连接器注册上来、又声明了图片输入的模型，都会变成可选路线——不用填 key、不用填端点、不按 token 计费。
+3. 选它当主路线，保存，然后照常调用 `vision_read`。
+
+这样做改变什么、不改变什么：
+
+| | |
+| --- | --- |
+| 你的会话模型 | 完全不动。对话继续用你选的那个模型跑，只有"看图"这一件事切过去 |
+| 计费 | 走连接器那边的额度，不动你会话模型的账。标 `x0.00` 的模型单次调用不花钱 |
+| 你的 API Key | 全程不参与。连接器自己持有凭据，插件依然看不到 |
+| 免费额度的风险 | 促销模型可能被上游下架或改价，事先不知道。备用路线务必配两三条，那个列表就是干这个的 |
+| 质量 | 免费路线是小模型/廉价档。逐字转写一般没问题；数量、朝向、细节最容易翻车——见上面的实测对照表 |
+
+不想依赖连接器的话，同一个面板的「自定义 API」也能接任意 OpenAI 兼容端点；但那条路只能把图片 base64 内联发出、而且要自己存 key，所以只要有宿主路线，就优先用宿主路线。
+
+### 路线优先级：宿主模型优先，自定义 API 次之
+
+| | 宿主路线（`workbuddy/…`、`aliyun/…`、`direct/…`） | 自定义 API（`custom/…`） |
+| --- | --- | --- |
+| 密钥在谁手里 | 宿主的 provider 适配器 | 插件自己的配置文件（或 `apiKeyRef` 指向 `.credentials.yaml`） |
+| 图片怎么发 | 走附件服务，失败可退回内联 | 只能 base64 内联 |
+| 模型从哪来 | 自动发现，并做能力校验 | 你自己手填模型 id |
+| 轮换 / 额度 | 由 provider 层负责 | 自己管 |
+| 适合 | 几乎所有情况——只要你要的模型已经被宿主注册 | 宿主完全没听说过的临时服务 |
+
+自动发现只列声明了图片输入的宿主路线，所以"能出现在列表里"本身就是"它确认过自己能看图"。自定义路线是逃生口，不是默认路径——它也是唯一会往插件自己存储里写密钥的那条路。
 
 ### 面板（设置 → 视觉）
 
@@ -382,6 +450,8 @@ DSH 本来就知道怎么把图发给声明了图片输入的模型，但实际�
 | --- | --- |
 | 状态 | 运行中/已停用徽章、当前路线、工具名、`llm`／`attachments` 服务是否挂载、配置文件路径、模型发现时间、累计调用/成功/失败/成功率/平均耗时/累计图片字节/最近成功/上次错误 |
 | 路线 | 主路线（只列宿主声明支持图片输入的路线）、传输方式（auto/attachment/inline）、失败自动降级开关、备用路线列表（逐条添加、逐条删除）、重新发现模型 |
+| 提示词 | 默认任务、逐套模板编辑器与「恢复默认」、附加指令，以及就地可见的**保存**按钮——改完立刻写进配置文件，下一次读图就用 |
+| 自定义 API | 宿主不认识的 OpenAI 兼容端点：base URL、模型 id、密钥（只写不回显） |
 | 参数与限制 | 超时秒数、单张上限、单次图片数、附加指令、返回详细度（rich/quiet）、工具名 |
 | 开关 | 启用插件（关掉后工具明确拒绝，而不是偷偷换方式）、记录调用明细、明细保留条数 |
 | 操作 | 保存、放弃修改、运行自检、清零统计、清空明细、刷新 |
